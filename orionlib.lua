@@ -121,4 +121,171 @@ function OrionLib:MakeWindow(config)
     end
 
     return Window
+end  
+
+-- Tab-Erstellung (geht weiter von Block 1)
+    function Window:MakeTab(tabConfig)
+        tabConfig = tabConfig or {}
+        tabConfig.Name = tabConfig.Name or "Tab"
+
+        local Tab = {}
+        Tab.Button = Instance.new("TextButton")
+        Tab.Button.Parent = Window.TabHolder
+        Tab.Button.Size = UDim2.new(1, 0, 0, 30)
+        Tab.Button.BackgroundColor3 = OrionLib.Theme.Secondary
+        Tab.Button.TextColor3 = OrionLib.Theme.Text
+        Tab.Button.Font = Enum.Font.GothamBold
+        Tab.Button.TextSize = 14
+        Tab.Button.Text = tabConfig.Name
+
+        local Page = Instance.new("ScrollingFrame")
+        Page.Name = tabConfig.Name .. "_Page"
+        Page.Parent = Window.PageHolder
+        Page.Size = UDim2.new(1, 0, 1, 0)
+        Page.CanvasSize = UDim2.new(0, 0, 0, 0)
+        Page.BackgroundTransparency = 1
+        Page.Visible = false
+        Page.ScrollBarThickness = 5
+
+        -- Tab-Switch
+        Tab.Button.MouseButton1Click:Connect(function()
+            for _, p in ipairs(Window.PageHolder:GetChildren()) do
+                if p:IsA("ScrollingFrame") then
+                    p.Visible = false
+                end
+            end
+            Page.Visible = true
+        end)
+
+        -- Default erstes Tab sichtbar
+        if #Window.Tabs == 0 then
+            Page.Visible = true
+        end
+
+        -- Elemente
+        function Tab:AddLabel(text)
+            local Label = Instance.new("TextLabel")
+            Label.Parent = Page
+            Label.Size = UDim2.new(1, -10, 0, 25)
+            Label.Position = UDim2.new(0, 5, 0, #Page:GetChildren() * 30)
+            Label.BackgroundTransparency = 1
+            Label.Text = text
+            Label.TextColor3 = OrionLib.Theme.Text
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            return Label
+        end
+
+        function Tab:AddButton(cfg)
+            local Button = Instance.new("TextButton")
+            Button.Parent = Page
+            Button.Size = UDim2.new(1, -10, 0, 30)
+            Button.Position = UDim2.new(0, 5, 0, #Page:GetChildren() * 35)
+            Button.BackgroundColor3 = OrionLib.Theme.Accent
+            Button.TextColor3 = OrionLib.Theme.Text
+            Button.Font = Enum.Font.GothamBold
+            Button.TextSize = 14
+            Button.Text = cfg.Name or "Button"
+
+            Button.MouseButton1Click:Connect(function()
+                if cfg.Callback then
+                    cfg.Callback()
+                end
+            end)
+
+            return Button
+        end
+
+        function Tab:AddToggle(cfg)
+            local Button = Instance.new("TextButton")
+            Button.Parent = Page
+            Button.Size = UDim2.new(1, -10, 0, 30)
+            Button.Position = UDim2.new(0, 5, 0, #Page:GetChildren() * 35)
+            Button.BackgroundColor3 = OrionLib.Theme.Secondary
+            Button.TextColor3 = OrionLib.Theme.Text
+            Button.Font = Enum.Font.GothamBold
+            Button.TextSize = 14
+
+            local state = cfg.Default or false
+            local function update()
+                Button.Text = cfg.Name .. (state and " [ON]" or " [OFF]")
+            end
+            update()
+
+            Button.MouseButton1Click:Connect(function()
+                state = not state
+                update()
+                if cfg.Callback then
+                    cfg.Callback(state)
+                end
+            end)
+
+            return Button
+        end
+
+        function Tab:AddSlider(cfg)
+            local SliderFrame = Instance.new("Frame")
+            SliderFrame.Parent = Page
+            SliderFrame.Size = UDim2.new(1, -10, 0, 40)
+            SliderFrame.Position = UDim2.new(0, 5, 0, #Page:GetChildren() * 45)
+            SliderFrame.BackgroundTransparency = 1
+
+            local Label = Instance.new("TextLabel")
+            Label.Parent = SliderFrame
+            Label.Size = UDim2.new(1, 0, 0, 20)
+            Label.BackgroundTransparency = 1
+            Label.TextColor3 = OrionLib.Theme.Text
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Text = cfg.Name .. ": " .. tostring(cfg.Default or cfg.Min)
+
+            local SliderBar = Instance.new("Frame")
+            SliderBar.Parent = SliderFrame
+            SliderBar.Position = UDim2.new(0, 0, 0, 25)
+            SliderBar.Size = UDim2.new(1, 0, 0, 10)
+            SliderBar.BackgroundColor3 = OrionLib.Theme.Secondary
+
+            local Fill = Instance.new("Frame")
+            Fill.Parent = SliderBar
+            Fill.Size = UDim2.new(0, 0, 1, 0)
+            Fill.BackgroundColor3 = OrionLib.Theme.Accent
+
+            local val = cfg.Default or cfg.Min
+
+            local function setValue(x)
+                local percent = math.clamp((x - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+                val = math.floor((cfg.Min + (cfg.Max - cfg.Min) * percent) / (cfg.Increment or 1)) * (cfg.Increment or 1)
+                Fill.Size = UDim2.new(percent, 0, 1, 0)
+                Label.Text = cfg.Name .. ": " .. tostring(val)
+                if cfg.Callback then
+                    cfg.Callback(val)
+                end
+            end
+
+            SliderBar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    setValue(input.Position.X)
+                end
+            end)
+
+            SliderBar.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                    setValue(input.Position.X)
+                end
+            end)
+
+            return SliderFrame
+        end
+
+        table.insert(Window.Tabs, Tab)
+        return Tab
+    end  
+
+-- Init Funktion
+function OrionLib:Init()
+    print("✅ OrionLib gestartet (volle Version)")
 end
+
+return OrionLib
